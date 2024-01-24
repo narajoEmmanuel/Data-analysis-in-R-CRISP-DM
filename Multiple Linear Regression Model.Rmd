@@ -1,0 +1,466 @@
+---
+title: "EXAMEN ARGUMENTATIVO"
+author: "Emmanuel Naranjo"
+date: "2023-12-01"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# 1. Introducción
+- Explique brevemente el contexto y el propósito del análisis.
+- Indique la pregunta de investigación o hipótesis que la regresión pretende abordar.
+
+
+EN WORD
+
+# 2. Exploración de Datos
+En esta sección, se llevará a cabo una descripción integral del conjunto de datos. Este análisis abarcará la presentación detallada de las variables incluidas en el conjunto de datos, destacando su naturaleza como variables dependientes o independientes. Se proporcionará información esencial sobre los tipos de variables, ya sean numéricas o categóricas, y se detallarán sus escalas de medición. 
+
+## i. Importación de Librerías y Dataset
+Inicialmente se instalan los siguientes paquetes y se procede con cargar la base de datos.
+
+```{r}
+library("ggfortify")
+library("statsr")
+library("skimr")
+library("forecast")
+library("ggplot2")
+library("dplyr")
+library("broom")
+library("ggpubr")
+library("gvlma")
+library("readxl")
+library("caret")
+library("tidyverse")
+library("pillar")
+library("psych")
+library("readr")
+library("GGally")
+library("corrplot")
+library("reshape2")
+library("gmodels")
+library("mice")
+```
+```{r}
+corolla_complete=read.csv("corolla.csv")
+View(corolla_complete)
+```
+
+## ii. Visualización de los Atributos y sus Datos
+Iniciaremos con la exploración de datos inicial, la cual permitirá revisar los tipos atributos, la existencia o no de missing data, los percentiles, la distribución de los datos; entre otros.
+
+La función dim proporciona las dimensiones del dataframe, es decir, el número de instancias y atributos. Este es un paso básico pero crucial para entender la dimensión del conjunto de datos. De la cual se obtiene que estamos trabajando con una estructura de 1,436 instancias y 37 atributos.
+
+```{r}
+dim(corolla_complete)
+```
+Se presenta una descripción de los 37 atributos, de los cuales en este caso tomaremos como nuestra variable dependiente a "Price" y las demás serán consideradas las variables independientes:
+
+Id: Identificador único para cada registro.
+Model: Modelo del automóvil.
+Price: Precio de venta del automóvil.
+Age_08_04: Edad del automóvil en meses.
+Mfg_Month: Mes de fabricación.
+Mfg_Year: Año de fabricación.
+KM: Kilometraje del automóvil.
+Fuel_Type: Tipo de combustible utilizado.
+HP: Caballos de fuerza del motor.
+Met_Color: Indicador de si el automóvil tiene pintura metalizada.
+Automatic: Indicador de si el automóvil es automático.
+cc: Cilindrada del motor.
+Doors: Número de puertas del automóvil.
+Cylinders: Número de cilindros en el motor.
+Gears: Número de marchas.
+Quarterly_Tax: Impuesto trimestral.
+Weight: Peso del automóvil.
+Mfr_Guarantee: Indicador de garantía del fabricante.
+BOVAG_Guarantee: Indicador de garantía BOVAG.
+Guarantee_Period: Período de garantía.
+ABS: Sistema de frenos antibloqueo.
+Airbag_1: Airbag frontal.
+Airbag_2: Airbag lateral.
+Airco: Aire acondicionado.
+Automatic_airco: Aire acondicionado automático.
+Boardcomputer: Computadora de a bordo.
+CD_Player: Reproductor de CD.
+Central_Lock: Cierre centralizado.
+Powered_Windows: Ventanas eléctricas.
+Power_Steering: Dirección asistida.
+Radio: Radio incorporado.
+Mistlamps: Luces antiniebla.
+Sport_Model: Modelo deportivo.
+Backseat_Divider: Separador de asiento trasero.
+Metallic_Rim: Rines metálicos.
+Radio_cassette: Radio casete.
+Tow_Bar: Enganche de remolque.
+
+
+Ahora, la función 'skim' proporciona rápidamente una visión general del marco de los datos. En este caso, nos muestra que el número de valores que faltan es cero, así como las características estadísticas básicas.
+
+```{r}
+skim(corolla_complete)
+```
+
+A partir de analizar los resultados arrojados por la función 'skim', se puede observar que hay 2 atributos de caracteres: 'Model' y 'Fuel_Type', y 35 atributos numéricos. Sin embargo, de los 35 atributos numéricos, 21 son considerados lógicos ya que definen numéricamente 2 clases de respuesta. Además, con el uso de la función 'sapply', se puede obervar que los atributos no cuentan con missing values. 
+
+```{r}
+sapply(corolla_complete, function(x) sum(is.na(x)))
+```
+
+```{r}
+corolla_complete$cc[81]=1600
+```
+
+Se puede observar de manera clara que no existen missing data entre los atributos al reflrjarse un número 0 para cada una de las variables. Esto fue analizado a detalle en el reporte anterior, donde también se realizó un análisis de outliers, en el que se encontró la oportunidad de corregir un dato en el atriubto 'cc', que reflejaba un registro fuera de proporción en comparación al resto. Para ello se remplazó el valor correcto '1600' por el valor atípico que se encuentra en la instancia 81 del atributo 'cc'.
+
+Ya que no se encontraró ningún valor identificado como 'missing data (NA)', no se encontró evidencia para la realización de procedimientos relacionados a la imputación de datos.
+
+# 3. Evaluación de colinealidad:
+Para responder a la pregunta de cuáles factores influyen en "Price" pregunta, examinaremos las correlaciones entre la variable dependiente de interés con respecto a las demás variables explicativas.
+
+Ahora, se llevará a cabo una evaluación de la multicolinealidad entre las variables independientes del conjunto de datos. Este análisis tiene como objetivo asegurarse de que las variables no estén altamente correlacionadas entre sí, lo que podría afectar la precisión de los modelos de regresión lineal y logística. 
+
+Una representación de cómo los datos interactúan entre sí es mediante la matriz de correlación. La cual permitirá evaluar las relaciones lineales, analizar la multicolinearidad y seleccionar los predictores para la variable de salida.
+
+Visualmente esto es, entre mayor el diámetro del círculo mostrado en la gráfica, mayor es la correlacion entre las variables. O bien, en la tabla de correlación: 1 indica una correlación positiva perfecta, -1 indica una correlación negativa perfecta, 0 indica falta de correlación lineal.
+
+Se han seleccionado columnas específicas que corresponden a los atributos numéricos que permitirán hacer un contraste cuantitativo mediante representaciones gráficas. Por el momento no se trabajarán los datos de carácter lógico, no obstante cabe destacar que serán analizados en instancias posteriores del proyecto en cuestión ya que permiten representar y trabajar con información que tiene naturaleza binaria.
+
+```{r}
+corolla.df = corolla_complete %>%
+  select("Id","Model","Price","Age_08_04","Mfg_Month", "Mfg_Year","KM","HP","cc","Doors","Cylinders", "Gears","Quarterly_Tax", "Weight","Guarantee_Period")
+```
+
+```{r}
+#no se toma en cuenta los atributos 1, 2 ni 11: Id, Model y Cylinders
+cor.matrix=cor(na.omit(corolla.df[, -c(1,2,11)]))
+
+#crear un gráfico visual de la matriz de correlación
+corrplot(cor.matrix) 
+```
+
+```{r}
+view(cor.matrix)
+```
+
+En el análisis EDA realizado en el informe anterior se presenta una descripción más detallada acerca de la colinearidad, a continuación se detallarán únicamente aquellas escogidas para el modelo MLR. 
+
+*Como resultados se tiene lo siguiente:*
+
+Correlación positiva:
+Mfg_Year: 0.89
+Weight: 0.58
+Gears: 0.06
+Guarantee_Period: 0.15
+Doors: 0.19
+cc: 0.17
+HP: 0.31
+Quarterly_Tax: 0.22
+Mfg_Month: -0.02
+
+Correlación negativa:
+Age_08_04: -0.88
+KM: -0.57
+Automatic_airco: -0.44
+Automatic: -0.44
+Airco: -0.43
+Mistlamps: -0.23
+CD_Player: -0.13
+Sport_Model: -0.14
+Airbag_2: -0.09
+Airbag_1: -0.15
+Metallic_Rim: -0.01
+Radio: 0.11
+Boardcomputer: -0.05
+Central_Lock: -0.15
+Powered_Windows: -0.16
+Radio_cassette: -0.01
+Tow_Bar: -0.07
+
+Posible Multicolinealidad Positiva:
+"Mfg_Year" y "Age_08_04" tienen una correlación de 0.89.
+"Weight" y "cc" tienen una correlación de 0.65.
+
+Posible Multicolinealidad Negativa:
+"Automatic" y "Automatic_airco" tienen una correlación de -0.44.
+
+# 4. Construcción del Modelo de Regresión Lineal Múltiple
+La regresión lineal es un método estadístico que se utiliza para modelar la relación lineal entre una variable dependiente (respuesta) y una o más variables independientes (predictoras).
+
+Una vez analizado qué miden los distintos predictores y por qué son relevantes para predecir la variable de salida, procederemos con la propuesta de una ecuación de regresión lineal múltiple para predecir el valor de Price. Además, se explicará la razón de cualquier transformación o interacción aplicada a las variables.
+
+Para esto, definimos la hipótesis de regresión lineal múltiple para la variable dependiente Y=Price de la siguiente manera:
+
+•   Price = β0 + β1x1 + β2x2 + ··· + βpxp + ϵ
+
+donde β0,..., βp son los coeficientes, las Xp son las variables independientes a seleccionar y ϵ es el ruido o parte no explicada.
+
+Se generaron 3 modelos de regresión lineal, cada uno con vairables diferentes que se definían de acuerdo a la significancia de las variables del modelo anterior.
+
+## i. 'Price' en función de todas las variables predictoras
+Para proceder con el modelo de regresión lineal se hace uso de la función "lm()" que genera el modelo para determinar la relación y significancia de todas las variables predictoras con la variable de salida "Price". 
+
+Dado que nuestro subset de datos cuenta con 12 atributos: "Age_08_04","Mfg_Month", "Mfg_Year","KM","HP","cc","Doors","Cylinders", "Gears","Quarterly_Tax", "Weight","Guarantee_Period" definiremos la hipótesis de regresión lineal de la siguiente manera:
+
+Price = B0 + (B1 · Age_08_04) + (B2 · Mfg_Month) + (B3 · Mfg_Year) + (B4 · KM) + (B5 · HP) + (B6 · cc) + (B7 · Doors) + (B8 · Cylinders) + (B9 · Gears) + (B10 · Quarterly_Tax) + (B11 · Weight) + (B12  · Guarantee_Period)
+
+```{r}
+modelo_lineal_1 <- lm(Price ~ Age_08_04 + Mfg_Month + Mfg_Year + KM + HP + cc + Doors + Cylinders + Gears + Quarterly_Tax + Weight + Guarantee_Period, data = corolla.df)
+
+# Resumen del modelo
+options(scipen = 999)
+summary(modelo_lineal_1)
+```
+
+A partir de este analisis donde se toman en cuenta casi la totalidad de las variables numéricas se obtiene que el modelo de regresión lineal resulta de la siguiente manera:
+
+Price = -4931.086101 - (122.863852 · Age_08_04) - (98.694033 · Mfg_Month) -  (0.017523 · KM) + (38.621730 · HP) - (2.426902 · cc) - (34.055145 · Doors) + (528.412717 · Gears) + (9.912092 · Quarterly_Tax) + (19.226265 · Weight) + (43.260581  · Guarantee_Period).
+
+En este modelo se ignoran los atributos 'Mfg_Year' y 'Cylinders' ya que se deben a singularidades, lo que podría indicar colinealidad o algún otro problema en el modelo. De entrada se sabe, de acuerdo a la amtriz de correlación que 'Mfg_Year' y 'Age_08_04' muestran un  nivel significante de multicolinearidad, por lo tanto se ignora la variable. Por otro lado, la el atributo 'Cylinders' es una variable con registros constantes, por lo tanto no se considera una variable significante para el modelo.
+
+Analizando las respuestas estadísticas que arroja la función ‘summary()’, es evidente que los atributos en su mayoría son significantes para determinar la variable respuesta 'Price' (presentan 3 estrellas del lado derecho, que reflejan un nivel de significancia del 1%), menos la variable doors que muestra un código de significancia 0.El coeficiente de determinación (R-squared) es 0.879, lo que sugiere que el modelo explica aproximadamente el 87.8% de la variabilidad en la variable dependiente.
+
+Para el siguiente modelo se ignorarán los agtributos 'Doors', y 'Cylinders'esperando una mejoría. Además, se remplazaran los atributos 'Age_08_04' y 'Mfg_Month con 'Mfg_Year' ya que este último presenta una relación directamente propocional con la variable de salida y se desea evitar cualquier oportunidad de multicolinearidad entre variables.
+
+
+## ii. Price en función de las variables predictoras xxxxx
+En un segundo acercamiento a encontrar nuestro mejor MLR, se seleccionaron las variables: 'Mfg_Year', 'KM', 'HP', 'cc', 'Quarterly_Tax', 'Weight',  y 'Guarantee_Period'. Estos atributos fueron los que aparecieron tener un mayor nivel de significancia con la variable de salida 'Price'. 
+
+En esta ocasión se define la segunda hipótesis del modelo de regresión lineal de la siguiente manera, basándonos en las correlaciones observadas anteriormente, ya que pueden proporcionar información valiosa para predecir la variable Price en un modelo de regresión lineal múltiple:
+
+Price = B0 + (B1 · Mfg_Year) + (B2 · KM) + (B3 · HP) + (B4 · cc) + (B5 · Gears)  + (B6 · Quarterly_Tax) + (B7 · Weight) + (B8  · Guarantee_Period)
+
+
+```{r}
+modelo_lineal_2 <- lm(Price ~ Mfg_Year + KM + HP + cc + Gears + Quarterly_Tax + Weight  + Guarantee_Period, data = corolla.df)
+
+# Resumen del modelo
+options(scipen = 999)
+summary(modelo_lineal_2)
+```
+
+A partir de este análisis se obtiene que el modelo de regresión lineal resulta de la siguiente manera:
+
+Price = -2946997.025393 + (1467.586177 · Mfg_Year) - (0.017893 · KM) + (38.032657 · HP) - (2.356898 · cc) + (560.929528 · Gears)  + (9.991715 · Quarterly_Tax) + (18.934784 · Weight) + (43.846495  · Guarantee_Period)
+
+Analizando las respuestas estadísticas que arroja la función ‘summary()’, es evidente que los atributos en su mayoría son significantes para determinar la variable respuesta 'Price' (presentan 3 estrellas del lado derecho, que reflejan un nivel de significancia del 1%), menos la variable 'Gears' que muestra un código de significancia un poco menor. El coeficiente de determinación (R-squared) es 0.87, lo que sugiere que el modelo explica aproximadamente el 87.8% de la variabilidad en la variable dependiente.
+
+El R-cuadrado de ambos modelos es sumamente similar, sin embargo, en este segundo modelo únicamente se tomaron en cuenta atributos que presentan una relación significcativa con la variable de salida, por lo tanto este modelo será empleado en el modelo de step forward para verificar la existencia de un mejor modelo.
+
+## iii. Price y Modelo con 'Step Forward'
+
+En un tercer acercamiento a encontrar el mejor MLR, se empleó el método de 'step forward' con el fin de determinar y seleccionar los atributos con más significancia para el modelo final. El "step forward"es una técnica utilizada en la construcción de modelos de regresión lineal para la selección de características (features) o variables predictoras que se incluirán en el modelo final.
+
+```{r}
+corolla.lm.null <- lm(Price ~ 1, data = corolla.df)
+corolla.lm.step <- step(corolla.lm.null,
+                     scope = list(lower = corolla.lm.null, upper = modelo_lineal_2),
+                     direction = "forward")
+summary(corolla.lm.step)
+```
+
+Este tercer modelo que implica el uso de 'step forward' proporcionó un modelo idéntico al segundo modelo previamente planteado. Esto es porque el step forward ccomprobó que no existe posibilidad de mejoría al modelo; por lo tanto el modelo presentado anteriormente ('modelo_lineal_2'), es el más óptimo, con mejor ajuste a los datos.
+
+Analizando las respuestas estadísticas que arroja la función ‘summary()’, es evidente que los atributos en su mayoría son significantes para determinar la variable respuesta 'Price' (presentan 3 estrellas del lado derecho, que reflejan un nivel de significancia del 1%), menos la variable 'Gears' que muestra un código de significancia un poco menor. El coeficiente de determinación (R-squared) es 0.87, lo que sugiere que el modelo explica aproximadamente el 87.8% de la variabilidad en la variable dependiente, lo cual es un buen resultado del modelo.
+
+
+## iv. Seleccionar el Modelo Lineal
+El R cuadrado ajustado proporciona una medida de la calidad del modelo ajustado teniendo en cuenta el número de variables en el modelo. Un valor más alto indica un mejor ajuste, razón por la cual escogemos como mejor MLR nuestra opción (ii), ya que brinda un valor de R cuadrado ajustado igual a 0.87.
+
+```{r}
+# Obtener el R cuadrado ajustado
+r_cuadrado_ajustado_1 <- summary(modelo_lineal_1)$adj.r.squared
+r_cuadrado_ajustado_2 <- summary(modelo_lineal_2)$adj.r.squared
+r_cuadrado_ajustado_3 <- summary(corolla.lm.step)$adj.r.squared
+
+# Imprimir el resultado
+cat("El R cuadrado ajustado para el modelo (i) es:", r_cuadrado_ajustado_1, "\n\n")
+cat("El R cuadrado ajustado para el modelo (ii) es:", r_cuadrado_ajustado_2, "\n\n")
+cat("El R cuadrado ajustado para el modelo (iii) es:", r_cuadrado_ajustado_3, "\n\n")
+
+```
+
+El coeficiente de determinación (R-squared) es 0.87 en los modelos sugiere que el modelo explica aproximadamente el 87% de la variabilidad en la variable dependiente, lo cual es muy bueno. Aunque el coeficiente de determinación sea unos decímales más alto, se opta por el segundo modelo (ii) ya que este solo cuenta con variables con una relacicón significativa con la variable de salida en el modelo.
+
+# 5. Training y Testing del MLR Seleccionado
+
+## i. Training
+Para comprobar la relación lineal entre las variables, se establecerá un escenario de entrenamiento y validación para evaluar un modelo lineal. El conjunto de entrenamiento se crea seleccionando aleatoriamente el 60% de los índices (utilizando la función "set.seed") y el conjunto de validación se forma excluyendo las filas correspondientes al conjunto de entrenamiento, siendo el 40% restante del subset "corolla.df".
+
+Primeramente se asignaron 860 datos, es decir el 60% de los datos al entrenamiento ("train.index"). Posteriormente, se seleccionaron las variables que presentaron significancia en el modelo elegido ('modelo_lineal_2'), y utilizando estos dos supuestos, se generó el dataframe de entrenamiento ("training.df") y el dataset de validación o prueba ("validing.df").
+
+
+```{r}
+selected_variable <- c(3,6, 7, 9, 12, 15, 16, 17, 20)
+
+names(corolla_complete[selected_variable])
+```
+
+
+```{r}
+# Establecer semilla para reproducibilidad
+set.seed(123)
+
+# Obtener el número total de instancias (1426)
+total_instancias <- nrow(corolla.df)
+
+# Definir el tamaño del conjunto de entrenamiento (60%)
+tamano_entrenamiento <- round(0.6 * total_instancias)
+
+# Crear índices aleatorios para el conjunto de entrenamiento
+train.index <- sample(1:total_instancias, size = tamano_entrenamiento, replace = FALSE)
+
+# Crear conjunto de entrenamiento
+training.df <- corolla_complete[train.index, selected_variable]
+
+# Crear conjunto de validación
+validing.df <- corolla_complete[-train.index, selected_variable]
+```
+
+Ahora se procederá a emplear MLR mediante la función "lm()" para el conjunto de datos "training.df" con el fin de entrenar el modelo. Es de esta forma que podemos comprobar que en efecto existe relaciones lineales entre las variables independientes y la variable dependiente.
+
+```{r}
+corolla.lm <- lm(Price~.,data = training.df)
+
+options(scipen = 999)
+summary(corolla.lm)
+```
+
+Los resultados son un poco diferentes al modelo lineal 2 ya que solo se ajusta al 60% de los datos de entrenamiento, lo cual puede alterar el resultado final. Sin embargo, los resultados fueron similares, por lo tanto este modelo se usará para hacer las predicciones y obtener los residuales.
+
+## ii. Testing
+Ahora se realizará la validación del modelo mediante la función "predict()". La variable "corolla.lm.pred" almacenará las predicciones que se obtienen del modelo de regresión lineal; por lo tanto a función "predict()" utilizará el conjunto de datos "validing.df" para generar las predicciones basadas en el modelo "corolla.lm".
+
+```{r}
+# Realizar predicciones en el conjunto de validación
+corolla.lm.pred <- predict(corolla.lm, validing.df)
+```
+
+Por su parte, los residuales representan la diferencia entre los valores observados y los valores predichos por el modelo. Se crea un data frame que contiene tres atributos: "Predicted" con las predicciones, "Actual" con los valores reales y "Residual" con los residuales; calculados en base al 40% de los datos totales restantes (subset "validing.df").
+
+```{r}
+options(scipen = 999)
+
+some_residuals <- validing.df$Price - corolla.lm.pred
+
+data_frame("Predicted" = corolla.lm.pred, "Actual" = validing.df$Price, "Residual" = some_residuals)
+```
+
+Previo al análisis de residuales, es importante destacar que estos se miden en unidades de la variable de salida, es decir, en este caso se miden en unidades de dinero; específicamente en dólares americanos. Al momento de analizar los residuales, es importante destacar que entre más cercanos sean los valores a 0, mejor. En este caso se obtienen valores alejados de 0; pero poniéndolos en perspectiva numérica, muestra que los resultados no estan tan alejados de la situación real. En algunos casos la diferencia entre el valor actual y el predicho es de 2650 dólares, y en otros casos es de 232 dólares. Por lo cual se puede concluir que los residuales son aceptables y se pueden explicar con el hehco de que sólamente el 87% (R-cuadrado) de los datos pueden ser explicados por el modelo.
+
+# 6. Verificación de Supuestos y Análisis de Residuos
+En esta sección se evaluará si en efeceto se cumplen los supuestos de la regresión lineal múltiple para nuestro modelo seleccionado (ii).Estos son:
+
+Linealidad: Relaciones lineales entre las variables independientes y la variable dependiente.
+Independencia: Independencia de los residuales.
+Homoscedasticidad: La varianza de los residuos es constante en todos los niveles de las variables independientes.
+Normalidad: Los residuos se distribuyen normalmente.
+
+De esta manera, los siguientes gráficos ayudarán a visualizar la linealidad, independencia, homoscedasticidad y normalidad de los residuos. 
+
+## i. Linealidad
+La función "plot()" se utiliza para crear un gráfico de dispersión entre los valores ajustados y los residuales. Cada punto en el gráfico representa una observación en tu conjunto de datos.
+
+A partir del análisis de linealidad se puede comporbar la relacion lineal entre las variables independientes y la variable dependiente. Se observa un patrón lineal entre los datos.
+
+```{r}
+plot(corolla.lm$fitted.values, corolla.lm$residuals)
+abline(h = 0, col = "red", lty = 2)
+```
+
+## ii. Independencia
+Este código crea un gráfico de dispersión donde en el eje x se muestran las observaciones, y en el eje y se muestran los valores de los residuales correspondientes a esas observaciones. Cada punto en el gráfico representa la diferencia entre el valor observado y el valor predicho por el modelo para una observación específica. Se osbserva que cada valor es independiente y lineal, lo cual indica que el modelo es adecuado.
+
+```{r}
+plot(corolla.lm$residuals, type = "p")
+```
+
+## iii. Homoscedasticidad
+Este gráfico comprueba que la varianza de los datos es constante, es decir, presentan homocedasticidad. La homocedasticidad es una propiedad deseable de los errores de un modelo de regresión simple ya que permite realizar modelos más confiables. Por lo tanto, se puede decir que los datos presentan homocedasticidad, lo cual indica un modelo confiable.
+
+```{r}
+autoplot(corolla.lm)
+```
+
+## iv. Normalidad
+Los residuales muestran una distribución normal al presentar una línea recta en el gráfico. La distribución normal de los residuales provoca estimaciones e intervalos de predicción más precisas, lo que indica que el MLR es aceptable y confiable.
+
+```{r}
+qqnorm(corolla.lm$residuals)
+qqline(corolla.lm$residuals)
+```
+
+
+# 7. Ajuste del Modelo
+
+Ahora se analizará la veracidad del MLR. Esto implica el uso de métricas como (RMSE) o (R cuadrado) para evaluar el rendimiento del modelo. Estas métricas proporcionan una medida de la calidad global del ajuste, considerando la proporción de variabilidad "Price" explicada por el modelo y ajustándola según el número de variables independientes incluidas. 
+
+En el análisis del modelo de regresión lineal múltiple aplicado a los precios de vehículos usados de la marca Toyota, se observa un rango de precios que oscila entre $ 4,350 y $ 32,500. En relación con este contexto, el Root Mean Squared Error (RMSE) del modelo es de $1239.72, que representa aproximadamente el 3.8% del rango total de precios. Este cálculo ofrece una perspectiva relativa de la magnitud de los errores en relación con la escala de los precios reales. Cabe resaltar que la evaluación precisa del rendimiento del modelo debe considerar el contexto específico del problema y las expectativas con respecto a la precisión del modelo en la predicción de los precios de los vehículos usados de la marca Toyota.
+
+```{r}
+summary(corolla_complete$Price)
+```
+
+```{r}
+accuracy(corolla.lm.pred, validing.df$Price)
+```
+
+Por otro lado, un R cuadrado cercano a 1 indica un buen ajuste. Además, es esencial analizar la importancia del modelo en su conjunto, evaluando la relevancia y contribución de las variables predictoras. El análisis del modelo de regresión lineal múltiple revela información valiosa sobre la calidad del ajuste y la importancia de las variables independientes. El "adj.r.squared" de 0.8703 indica que aproximadamente el 87.03% de la variabilidad en "Price" puede ser explicada por las variables independientes incluidas en el modelo. 
+
+```{r}
+adjusted_r_squared <- summary(corolla.lm)$adj.r.squared
+
+cat("El R cuadrado ajustado es:", adjusted_r_squared, "\n")
+```
+En su conjunto, el modelo presenta un buen ajuste general con un alto R cuadrado ajustado y un RMSE aceptable, y las variables independientes incluidas son estadísticamente significativas en la predicción del precio del automóvil, lo que respalda su importancia en el modelo seleccionado.
+
+# 8. Análisis de las Variables y sus Coeficientes
+Se procederá a evaluar la importancia de cada variable independiente y de sus coeficientes mediante la utilización de valores p, destacando especialmente aquellas que se revelen como predictores estadísticamente significativos de la variable dependiente "Price".
+
+Para visualizar esto, se utiliza la función "gvlma()" para realizar una prueba global de diagnóstico para validar varias suposiciones del modelo lineal (ii), como la linealidad, la homocedasticidad y la normalidad de los residuales. La función toma como entrada el modelo de regresión lineal del training (corolla.lm).
+
+```{r}
+gv_model <- gvlma(x= corolla.lm)
+summary (gv_model)
+```
+## i. Importancia de cada variable independiente
+Todas las variables presentan p-valores significativamente bajos, indicando que son estadísticamente significativas en la predicción del precio del automóvil. Esto sugiere que cada variable contribuye de manera significativa a explicar la variabilidad en el precio.
+
+
+## ii. Variables predictores estadísticamente significativos
+Las variables más destacadas en términos de impacto estadístico significativo en el precio del automóvil son 'Mfg_Year', 'KM', 'HP', 'cc', 'Gears', 'Quarterly_Tax', 'Weight', y 'Guarantee_Period'. Estas variables tienen p-valores muy bajos, lo que sugiere una relación estadísticamente significativa con el precio del automóvil.
+
+## iii. Interpretación de los coeficientes
+*Mfg_Year*: Un aumento de una unidad en el año de fabricación resulta en un aumento estimado de $1507.72 en el precio del automóvil, manteniendo constantes las otras variables.
+
+*KM*: Un aumento de una unidad en el kilometraje se asocia con una disminución estimada de $0.0177 en el precio del automóvil, manteniendo constantes las otras variables.
+
+*HP*: Un aumento de una unidad en la potencia del motor ('HP') se traduce en un aumento estimado de $39.47 en el precio del automóvil, manteniendo constantes las otras variables.
+
+*cc*: Un aumento de una unidad en la cilindrada ('cc') está asociado con una disminución estimada de $2.48 en el precio del automóvil, manteniendo constantes las otras variables.
+
+*Gears*: Un cambio de una unidad en la cantidad de engranajes ('Gears') resulta en un aumento estimado de $490.70 en el precio del automóvil, manteniendo constantes las otras variables.
+
+*Quarterly_Tax*: Un aumento de una unidad en el impuesto trimestral ('Quarterly_Tax') se asocia con un aumento estimado de $10.94 en el precio del automóvil, manteniendo constantes las otras variables.
+
+*Weight*: Un aumento de una unidad en el peso ('Weight') resulta en un aumento estimado de $17.08 en el precio del automóvil, manteniendo constantes las otras variables.
+
+*Guarantee_Period*: Un cambio de una unidad en el período de garantía ('Guarantee_Period') se asocia con un aumento estimado de $40.40 en el precio del automóvil, manteniendo constantes las otras variables.
+
+# 9. Conclusiones
+- Resuma los hallazgos del análisis.
+- Indique si el modelo es adecuado para hacer predicciones o sacar conclusiones sobre relaciones entre variables.
+- Limitaciones y recomendaciones:
+- Analice cualquier limitación del análisis o los datos.
+- Sugerir posibles mejoras o futuras direcciones de investigación.
+
+# 10. Bibliografía
+[1]   Khandelwal, R. (2021). *A Step by Step Guide to Multiple Linear Regression in R*. Medium. https://arshren.medium.com/a-step-by-step-guide-to-multiple-linear-regression-in-r-a85d270f70f7
+
+[2]   Gustavo. (2022). *Understanding Logistic Regression step by step*. Medium. https://towardsdatascience.com/understanding-logistic-regression-step-by-step-704a78be7e0a
+
+[3]   Singh, S. (2022). *Exploratory Data Analysis (EDA) in R: A Step-by-Step Guide with Commands*. Medium. https://medium.com/towards-data-engineering/exploratory-data-analysis-eda-in-r-a-step-by-step-guide-with-commands-b9acbc1d557d
+
+[4]   Dey, J. (2022). *Step-by-step Basic Data Cleaning in R*. Medium. https://medium.com/@joyeetadey/step-by-step-basic-data-cleaning-in-r-3441c9cf6096

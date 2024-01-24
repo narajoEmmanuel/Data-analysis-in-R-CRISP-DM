@@ -1,0 +1,298 @@
+---
+title: "MLRM"
+date: "2023-11-24"
+output: word_document
+---
+# STEP 0: Installation of libraries required
+```{r}
+library(skimr)
+library(VIM)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(pillar)
+library(psych)
+library(readr)
+library(GGally)
+library(corrplot)
+library(reshape2)
+library(gmodels)
+library(mice)
+library(nnet)
+library(caret)
+library(readxl)
+```
+# Introduccion
+
+La metodología de Modelo Lineal de Regresión Múltiple es muy usada en el análisis de datos, es un método estadístico usado para modelar la probabilidad de ocurrencia de un evento binario, es decir cuando la variable dependiente es categórica y tiene dos posibilidades (categorías) como si/no, true/false, etc.  Este modelo no predice el siguiente valor, sino que predice la probabilidad de que la variable dependiente pertenezca a una categoría específica. 
+En el siguiente modelo realizado se utilizó está metodología de forma que todas las variables utilizadas fueron categorizadas, se convirtieron los factores binarios en lógicos para su interpretación, el objetivo de realizar este modelo es saber qué factores hacen que un auto esté por encima o por debajo del precio por medio de la probabilidad. 
+
+
+# Cargar dataset
+```{r}
+corolla_full <- read.csv("corolla.csv")
+
+logistic.df = corolla_full %>%
+  select("Price","Fuel_Type","Met_Color","Automatic","Mfr_Guarantee","BOVAG_Guarantee","ABS","Airbag_1","Airbag_2","Airco", "Automatic_airco", "Boardcomputer","CD_Player","Central_Lock","Powered_Windows","Power_Steering","Radio","Mistlamps", "Sport_Model", "Backseat_Divider", "Radio_cassette", "Tow_Bar")
+
+skim(logistic.df)
+```
+```{r}
+summary(logistic.df)
+```
+
+Se importa la base de datos y se guarda en una nueva variable para trabajar de forma segura, con la función select se seleccionan todas las variables que son categóricas binomiales (es decir que tienen 0 y 1 como valores) y también es importante agregar la variable de interés o dependiente que es el precio pues es la variable en la que nos basaremos para analizar y concluir. 
+
+# Factorizacion Predictores
+```{r}
+# Convertir "Fuel_Type" en un factor o categórico en lugar de numérico o cadena.
+logistic.df$Fuel_Type <- as.factor(logistic.df$Fuel_Type)
+
+# Ver las categorías llamando a la función contrasts()
+contrasts(logistic.df$Fuel_Type)
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Met_Color <- ifelse(test = logistic.df$Met_Color == 0, yes="No",  no="Si")
+logistic.df$Met_Color <- as.factor(logistic.df$Met_Color)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Automatic <- ifelse(test = logistic.df$Automatic == 0, yes="No",  no="Si")
+logistic.df$Automatic <- as.factor(logistic.df$Automatic)
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Mfr_Guarantee <- ifelse(test = logistic.df$Mfr_Guarantee == 0, yes="No",  no="Si")
+logistic.df$Mfr_Guarantee <- as.factor(logistic.df$Mfr_Guarantee)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$BOVAG_Guarantee <- ifelse(test = logistic.df$BOVAG_Guarantee == 0, yes="No",  no="Si")
+logistic.df$BOVAG_Guarantee <- as.factor(logistic.df$BOVAG_Guarantee)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$ABS <- ifelse(test = logistic.df$ABS == 0, yes="No",  no="Si")
+logistic.df$ABS <- as.factor(logistic.df$ABS)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Airbag_1 <- ifelse(test = logistic.df$Airbag_1 == 0, yes="No",  no="Si")
+logistic.df$Airbag_1 <- as.factor(logistic.df$Airbag_1)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Airbag_2 <- ifelse(test = logistic.df$Airbag_2 == 0, yes="No",  no="Si")
+logistic.df$Airbag_2 <- as.factor(logistic.df$Airbag_2)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+#Airco
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Airco <- ifelse(test = logistic.df$Airco == 0, yes="No",  no="Si")
+logistic.df$Airco <- as.factor(logistic.df$Airco)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+#Automatic_airco
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Automatic_airco <- ifelse(test = logistic.df$Automatic_airco == 0, yes="No",  no="Si")
+logistic.df$Automatic_airco <- as.factor(logistic.df$Automatic_airco)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+#Boardcomputer
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Boardcomputer <- ifelse(test = logistic.df$Boardcomputer == 0, yes="No",  no="Si")
+logistic.df$Boardcomputer <- as.factor(logistic.df$Boardcomputer)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+#CD_Player
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$CD_Player <- ifelse(test = logistic.df$CD_Player == 0, yes="No",  no="Si")
+logistic.df$CD_Player <- as.factor(logistic.df$CD_Player)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+#Central_Lock
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Central_Lock <- ifelse(test = logistic.df$Central_Lock == 0, yes="No",  no="Si")
+logistic.df$Central_Lock <- as.factor(logistic.df$Central_Lock)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Powered_Windows <- ifelse(test = logistic.df$Powered_Windows == 0, yes="No",  no="Si")
+logistic.df$Powered_Windows <- as.factor(logistic.df$Powered_Windows)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Power_Steering <- ifelse(test = logistic.df$Power_Steering == 0, yes="No",  no="Si")
+logistic.df$Power_Steering <- as.factor(logistic.df$Power_Steering)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+
+```{r}
+#Radio
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Radio <- ifelse(test = logistic.df$Radio == 0, yes="No",  no="Si")
+logistic.df$Radio <- as.factor(logistic.df$Radio)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Mistlamps <- ifelse(test = logistic.df$Mistlamps == 0, yes="No",  no="Si")
+logistic.df$Mistlamps <- as.factor(logistic.df$Mistlamps)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+
+```{r}
+#Sport_Model
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Sport_Model <- ifelse(test = logistic.df$Sport_Model == 0, yes="No",  no="Si")
+logistic.df$Sport_Model <- as.factor(logistic.df$Sport_Model)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+#Backseat_Divider
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Backseat_Divider <- ifelse(test = logistic.df$Backseat_Divider == 0,yes="No",  no="Si")
+logistic.df$Backseat_Divider <- as.factor(logistic.df$Backseat_Divider)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+
+```{r}
+#Radio_cassette
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Radio_cassette <- ifelse(test = logistic.df$Radio_cassette == 0, yes="No",  no="Si")
+logistic.df$Radio_cassette <- as.factor(logistic.df$Radio_cassette)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+```{r}
+#Tow_Bar
+# cuando una columna sea integer y debería de ser un factor
+logistic.df$Tow_Bar <- ifelse(test = logistic.df$Tow_Bar == 0, yes="No",  no="Si")
+logistic.df$Tow_Bar <- as.factor(logistic.df$Tow_Bar)
+
+#Checar dataset otravez a ver que todo este en orden
+```
+
+Se factorizan todas las variables, tomando 0 como false (no tienen esa característica) y 1 como true (si la tienen). 
+En esta etapa, se llevó a cabo la transformación esencial de las variables predictoras de 0 y 1 a sus equivalentes lógicos, es decir, de "ausente" a "false" y de "presente" a "true". Este proceso, conocido como factorización, fue crucial para adaptar las características del conjunto de datos al formato más apropiado para la construcción del modelo de regresión logística. Al convertir las variables binarias en factores lógicos, se facilita la interpretación de los coeficientes del modelo, ya que ahora representan de manera más intuitiva el impacto de la presencia o ausencia de cada característica en la predicción de si un automóvil estará por encima o por debajo del precio promedio.
+
+```{r}
+skim(logistic.df)
+```
+
+
+# Division y Factorizacion del Precio
+```{r}
+promedio_price <- mean(logistic.df$Price)
+promedio_price
+```
+```{r}
+logistic.df$Price=ifelse(test=logistic.df$Price<mean(logistic.df$Price),yes="BA", no="AA")
+logistic.df$Price=factor(logistic.df$Price,levels=c("BA","AA"))
+view(logistic.df)
+```
+
+
+Debido a que para una regresión logística, la variable de salida debe ser binomial categórica, por lo que en esta sección se clasificaron los precios de la base de datos como por debajo del promedio (BA) y por encima del promedio (AA). Una vez los precios ya están categorizados se factoriza el atributo de precio.
+
+# Revision de distribucion de instancias
+
+```{r}
+countAA=length(which(logistic.df$Price=="AA"))
+countBA=length(which(logistic.df$Price=="BA"))
+countAA
+countBA
+```
+
+# Creacion Modelo de Regresion Logistica Inicial
+
+```{r}
+logistic <- glm(Price ~., data = logistic.df,family="binomial")
+summary(logistic)
+```
+
+Se genera un modelo logístico con la función glm con todas las variables, podemos ver que existen variables con una significancia nula o baja que pueden afectar el desempeño del modelo. Las variables con una significancia buena y que pueden ser consideradas para un segundo modelo son: garantía de manufacturador, el ABS, aire acondicionado, tablero computarizado, lector de discos de cd, lámparas para niebla y barra de remolque. Esto lo sabemos por los códigos de significancia que hay a un lado de los valores de las variables. 
+
+# Validacion & Testeo
+
+```{r}
+set.seed(1)
+test.index=sample(c(1:length(logistic.df$Price)),(0.4*length(logistic.df$Price)))
+test.df=logistic.df[test.index,]
+data.test=predict(logistic,test.df,type="response")
+data.predict = rep("BA", dim(test.df)[1])
+data.predict[data.test> .5] = "AA"
+acc=sum(data.predict==logistic.df)/length(logistic.df$Price)
+acc
+```
+
+Se tomaron de la base de datos para originar un 40% de instancias aleatorias para probar el modelo. El modelo generado inicialmente demostró un desempeño positivo, acertando 54.5% de las clasificaciones del precio.
+
+# Prueba Mejora de modelo
+
+```{r}
+prueba=glm(Price~Mfr_Guarantee+ABS+Airco+Automatic_airco+Boardcomputer+CD_Player+Mistlamps+Tow_Bar,data=logistic.df,family="binomial")
+summary(prueba)
+data.test2=predict(prueba,test.df,type="response")
+data.predict2 = rep("BA", dim(test.df)[1])
+data.predict2[data.test2> .5] = "AA"
+acc2=sum(data.predict2==logistic.df)/length(logistic.df$Price)
+acc2
+```
+
+Tomando en cuenta las observaciones que se hicieron al generar el modelo inicial, se descartaron las variables que vimos que tenían una baja significancia y se generó un segundo modelo. El segundo modelo se puso a prueba con la misma base de datos que el modelo inicial y se mostró una leve mejoría en el desempeño del modelo, teniendo este un 55.2% de aciertos en la predicción de la clasificación del precio de los autos
+
+# Conclusiones
+
+A través del análisis del modelo de regresión logística, se logró discernir la influencia de diversas variables en la clasificación de automóviles según si su precio se encuentra por encima o por debajo del promedio. El modelo inicial proporcionó valiosa información, pero la mejora estratégica del modelo, incorporando específicamente las variables Mfr_Guarantee, ABS, Airco, Automatic_airco, Boardcomputer, CD_Player, Mistlamps y Tow_Bar, permitió una mayor precisión en la predicción. Estas variables destacadas demuestran ser significativas en la determinación de los precios de los automóviles. Este refinamiento no sólo potencia la capacidad del cliente para tomar decisiones informadas en relación con la fijación de precios, estrategias de marketing y ventas, sino que también sienta las bases para futuras investigaciones destinadas a optimizar aún más la eficacia predictiva del modelo. Estos resultados, en conjunto, ofrecen al cliente una herramienta sólida y estratégica para la toma de decisiones comerciales respaldadas por datos más precisos y pertinentes.

@@ -1,0 +1,293 @@
+---
+title: "Situación Problema Análisis de Datos"
+author: "Equipo 1"
+date: "2023-11-23"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# INTRODUCCIÓN
+
+En el siguiente documento se llevará acabo un Análisis de Exploración de Datos sobre los datos relevantes al precio de autos usados de la marca Toyota. El objetivo de este análisis es explorar la estructura y características de los datos previo a cualquier suposición, identificar errores, entender patrones, detectar valores atípicos y determinar relaciones entre las variables quantitativas (numéricas) y qualitativas (categóricas) con el fin de determinar los principales factores que definen el precio de un auto Toyota usado. En este caso se trabaja con un dataset que contiene datos importantes sobre autos usados de la marca Toyota. Se trata de una base de datos que contiene 37 atributos y 1,436 instancias. 
+
+Partiendo de esto, se elaborará el análisis exploratorio de datos y posteriormente el procedimiento de imputación de datos donde en caso de ser requerido.
+
+# METODOLOGÍA
+Como metodología aplicada a este caso se tomará en cuenta la metodología CRISP-DM (Cross Industry Data Standard Process for Data Mining), el cual es un método probado para orientar trabajo dirigido hacía la minería de datos. Es un proceso de 6 etapas, de las cuales en el presente reporte se hará énfasis en el segundo y tercer paso que hacen referencia a la exploración de los datos por medio del análisis EDA (Análisis Exploratorio de Datos). EDA tiene el propósito de explorar y comprender la estructura y características de los datos antes de aplicar técnicas más avanzadas por medio de la búsqueda de patrones interesantes y relevantes a la pregunta de investigación. Además, en caso de ser necesario, se implementarán técnicas de imputación de datos, con el fin de corregir datos faltantes (NA 's, zeros, missing values y white spaces) y obtener una base consistente para su análisis; y de este modo, en el siguiente reporte obtener el mejor modelo de regresión lineal múltiple posible. 
+
+Tomando en cuenta CRISP-DM, el primer paso se basa en entender las necesidades del negocio. La información a analizar proviene de una base suministrada por los profesores de la unidad de formación, compuesta de 37 atributos y 1,436 instancias (esto se puede observar por medio de la función DIM, que será explicada más adelante dentro del código de R. A partir del análisis de estos datos se busca identificar los factores que determinan el precio de venta de vehículos de la marca Toyota usados en México.
+
+# ANÁLISIS EDA
+A continuación se realizará el análisis EDA, el cual estará dividido en una serie de pasos. Este análisis hace referencia al segundo y tercer paso del método CRISP-DM: Data Understanding and Data Preparation.
+
+Inicialmente se instalan los siguientes paquetes y se procede con cargar la base de datos.
+
+## PASO 0: Implementación de librerías
+```{r}
+library("dplyr")
+library("ggplot2")
+library("tidyverse")
+library("pillar")
+library("psych")
+library("skimr")
+library("readr")
+library("GGally")
+library("corrplot")
+library("reshape2")
+library("gmodels")
+library("mice")
+```
+
+## PASO 1: Carga de la base de datos
+```{r}
+ds=read.csv("corolla.csv")
+View(ds)
+skim(ds)
+sapply(ds, function(x) sum(is.na(x)))
+```
+En primera instancia, con el uso de la función 'skim', se puede observar que hay 2 atributos de caracteres y 35 atributos numéricos. Sin embargo, de los 35 atributos numéricos, 21 son considerados lógicos ya que definen numéricamente 2 clases de respuesta. Además, con el uso de la función 'sapply', se puede obervar que los atributos no cuentan con missing values. 
+
+## PASO 2: Creación de un 'subset'.
+Una vez cargada la base de datos, se creará un subset de datos con uso del 'PIPE OPERATOR'. Se han seleccionado columnas específicas que corresponden a los atributos numéricos que permitirán hacer un contraste cuantitativo mediante representaciones gráficas. Por el momento no se trabajarán los datos de carácter lógico, no obstante cabe destacar que serán analizados en instancias posteriores del proyecto en cuestión ya que permiten representar y trabajar con información que tiene naturaleza binaria.
+
+```{r}
+corolla.df = ds %>%
+  select("Id","Model","Price","Age_08_04","Mfg_Month", "Mfg_Year","KM","HP","cc","Doors","Cylinders", "Gears","Quarterly_Tax", "Weight","Guarantee_Period")
+
+View(corolla.df)
+```
+El nuevo dataframe creado, llamado 'corolla.df' se compone de los atributos numéricos contenidos en la base de datos original; es decir, "Id","Model","Price","Age_08_04","Mfg_Month", "Mfg_Year","KM","HP","cc","Doors","Cylinders", "Gears","Quarterly_Tax", "Weight",y "Guarantee_Period".
+
+## PASO 3: Exploración inicial de los datos
+Ahora se procederá con la exploración de datos inicial.
+
+La función 'skim' proporciona rápidamente una visión general del marco de los datos. En este caso, nos muestra el número de valores que faltan (missing values), así como las características estadísticas básicas. La función 'dim' proporciona las dimensiones del dataframe, es decir, el número de filas y columnas. 
+
+Este es un paso básico pero crucial para entender el tamaño del conjunto de datos que estamos trabajando.
+```{r}
+skim(corolla.df)
+dim(corolla.df)
+```
+De esta manera, con el uso de la función 'skim' se nos proporcionó un resumen de los contenidos de cada atributo. En este caso se puede observar que el dataframe tiene una dimensión de 15 atributos y 1,436 instancias (observado con la función 'dim'). De los 15 atributos, es evidente que 14 tienen contenido númerico, y solo 1 tiene contenido de carácteres (perteneciente al nombre del modelo del carro). Además, de entrada se puede observar que los atributos contenidos en este nuevo dataframe no tienen datos faltantes. 
+
+Al tener este primer análisis, se puede continuar con la graficación de los histogramas en el siguiente paso.
+
+## PASO 4: Graficación de histogramas
+La función 'ggplot' permite crear gráficas de datos complejos. A continuación se muestran los histogramas hechos para las variables o atributos numéricos seleccionados específicamente en el subset de datos "corolla.df".
+
+```{r}
+ggplot(corolla.df,mapping = aes(x=Price))+
+  geom_histogram(bins=45,fill="purple",col="white")+
+  labs(title = "1. Car Price Histogram")
+ggplot(corolla.df,mapping = aes(x=Age_08_04))+
+  geom_histogram(bins=45,fill="red",col="white")+
+  labs(title = "2. Car Age Histogram")
+ggplot(corolla.df,mapping = aes(x=Mfg_Month))+
+  geom_histogram(bins=45,fill="pink",col="white")+
+  labs(title = "3. Car Manufacturing Month Histogram")
+ggplot(corolla.df,mapping = aes(x=Mfg_Year))+
+  geom_histogram(bins=45,fill="blue",col="white")+
+  labs(title = "4. Car Manufacturing Year Histogram")
+ggplot(corolla.df,mapping = aes(x=KM))+
+  geom_histogram(bins=45,fill="yellow",col="white")+
+  labs(title = "5. Car Usage Histogram")
+ggplot(corolla.df,mapping = aes(x=HP))+
+  geom_histogram(bins=45,fill="orange",col="white")+
+  labs(title = "6. Car Horse Power Histogram")
+ggplot(corolla.df,mapping = aes(x=cc))+
+  geom_histogram(bins=45,fill="brown",col="white")+
+  labs(title = "7. Car Cubic Centimietrs Histogram")
+ggplot(corolla.df,mapping = aes(x=Doors))+
+  geom_histogram(bins=45,fill="navy",col="white")+
+  labs(title = "8. Car Doors Histogram")
+ggplot(corolla.df,mapping = aes(x=Cylinders))+
+  geom_histogram(bins=45,fill="beige",col="white")+
+  labs(title = "9. Car Cylinders Histogram")
+ggplot(corolla.df,mapping = aes(x=Gears))+
+  geom_histogram(bins=45,fill="coral",col="white")+
+  labs(title = "10. Car Gears Histogram")
+ggplot(corolla.df,mapping = aes(x=Quarterly_Tax))+
+  geom_histogram(bins=45,fill="hotpink",col="white")+
+  labs(title = "11. Car Quarterly Tax Histogram")
+ggplot(corolla.df,mapping = aes(x=Weight))+
+  geom_histogram(bins=45,fill="green",col="white")+
+  labs(title = "12. Car Weight Histogram")
+ggplot(corolla.df,mapping = aes(x=Guarantee_Period))+
+  geom_histogram(bins=45,fill="gray",col="white")+
+  labs(title = "13. Car Guarantee Period Histogram")
+```
+**Evaluación Gráfica 1 (Precio):** Esta gráfica demuestra un rango de precio sesgado hacía la izquierda, probando que la mayoría de los autos manejan un precio al rededor de $10,000.
+**Evaluación Gráfica 2 (Edad del auto):** Esta gráfica demuestra que en la base de datos existe un sesgo hacía la derecha que muestra que la mayoría de los autos tienen más de 60 meses de existencia.
+**Evaluación Gráfica 3 (Mes de manufactura):** En la gráfica podemos observar como en los primeros meses del año, llega a su punto máximo de manufactura. El ultimo mes del año es el más bajo en comparación de los demás.
+**Evaluación Gráfica 4 (Año de manufactura):** Esta gráfica representa que la mayoría de los autos en la base de datos salieron de fábrica antes del año 2000.
+**Evaluación Gráfica 5 (Kilometraje):** Esta gráfica muestra un sesgo hacía la izquierda, demostrando que la mayoría de los autos en la base de datos tienen un kilometraje por debajo de los 15,000 km.
+**Evaluación Gráfica 6 (Caballos de fuerza):** Se puede apreciar en la grafica que la distribución de los datos ronda por los 100 caballos de fuerza y hay otros que llegan a rondar por los 200.
+**Evaluación Gráfica 7 (Centímetros cúbicos):** En esta gráfica podemos observar que la mayoría de los carros están por debajo de los 4000 centímetros cúbicos. La mayoría se sitúa entre los 1500 y los 2000 centímetros cúbicos
+**Evaluación Gráfica 8 (Puertas):** En esta gráfica se puede observar que únicamente existen autos con 3, 4 y 5 puertas, la mayoría cuentan con 3 o 5.
+**Evaluación Gráfica 9 (Cylindros):** Con esta gráfica se puede observar que la totalidad de los carros en el dataset cuentan con 4 cilindros. 
+**Evaluación Gráfica 10 (Granaje):** Podemos observar que casi en su totalidad de los carros cuentas con 5 engranajes y una pequeña cantidad cuenta con 6
+**Evaluación Gráfica 11 (Impuestos):** Se puede observar que la mayoría de los autos en el dataset cuentan con impuestos menores a 100. 
+**Evaluación Gráfica 12 (Peso):** Esta gráfica muestra un sesgo hacía la izquierda, probando que la mayoría de los autos mantienen un peso menor a 1,200 kg.
+**Evaluación Gráfica 13 (Garantía):** Esta gráfica (que se puede considerar irrelevante en este caso), demuestra que la mayoría de los autos en la base de datos tienen garantía mínima.
+
+## PASO 5: Matriz de correlación
+Ahora se obtendrá la matriz de correlación para analizar la multicolinearidad, ya que las variables de ingreso deben de ser independientes entre sí, que permitirá definir en los futuros pasos del modelo CRISP DM los modelos de predicción. 
+Esto es, entre mayor el diámetro del círculo mostrado en la gráfica, mayor es la correlacion entre las variables. Para este caso en la matriz de correlación se decidió eliminar el atributo 'Cylinders' ya que todos los datos de la variable representaban un mismo valor, por lo cual no sería de relevancia.
+
+```{r}
+cor.matrix=cor(na.omit(corolla.df[, -c(1,2,11)]))
+view(cor.matrix) #no se toma en cuenta los atributos 1, 2 ni 11; Id, Model y Cylinders respectivamente.
+corrplot(cor.matrix) #crear un gráfico visual de la matriz de correlación
+```
+A partir de este análisis, se puede identificar claramente que las variables que más se relaccionan con el precio son  el kilometraje, año de manufactura del auto, edad del auto. 
+Se puede observar que el precio del auto y la edad del mismo tienen una relación inversamente proporcional. Esto es, que conforme la edad del auto incremente, el precio disminuye, y vice versa.
+
+El kilometraje y el precio muestran tambien una relacion inversamente proporcional. Entre más bajo sea el kilometraje de un auto, más alto es el precio de venta.
+
+Por el contrario, el año de manufactura del auto y el precio muestran una relacion porporcional. Esto es, entre el año aumente (entre más nuevo sea el carro), el precio aumenta de manera proporcional.
+
+Por último, se encontró una relación proporcional entre el peso y el precio del carro. Entre más pesado sea el carro, mayor su precio de venta.
+
+Las otras variables restantes no muestran significancia con el precio.
+
+
+## PASO 6: Boxplot de las variables
+Ahora se obtendrán los boxplots. En este tipo de gráfico se obtendrán los cuartiles, la media y los valores atípicos (outliers).
+
+Nuevamente, con el uso de la función 'ggplot', se muestran las distribuciones de valores de datos numéricos, especialmente cuando se comparan entre varios grupos. Están diseñados para proporcionar información de alto nivel de un vistazo, ofreciendo información general sobre la simetría, la inclinación, la varianza y los valores atípicos de un grupo de datos.
+
+```{r}
+ggplot(data=melt(corolla.df[,-c(1,2)]),mapping=aes(x=variable,y=value))+ geom_boxplot()
+```
+De este resultado se puede observar que la variable 'kilometraje' tiene varios outliers y es la variable con valores más dispersos. En el atributo 'precio' también se identifican varios outliers y una meda de precio diferente a los demás atributos. 
+
+Para analizar este fenómeno detenidamente en el siguiente paso se realiza el análisis de valores atípicos sobre todas las variables cuantitativas para detectar estos valores y analizarlos.
+
+## PASO 7: Detección de outliers
+Este siguiente paso consiste en la detección de outliers, el cual es esencial para comprender y validar la calidad de nuestro conjunto de datos, y proporcionar información valiosa sobre patrones y comportamientos inusuales en el conjunto de datos.
+
+Solamente se tomarán en cuenta atributos de valores que se consideran que los outliers representarían un impacto considerable en el resultado final; y que además podrían representar errores.
+
+```{r}
+## Price outliers
+Out1 = boxplot.stats(corolla.df$Price)$out
+Price_Out=which(corolla.df$Price%in%c(Out1))
+Id_Price=corolla.df$Id[(Price_Out)]
+Model_price_o=corolla.df$Model[(Price_Out)]
+Price_Out_List=data.frame(
+  ID=Id_Price,
+  Model=Model_price_o,
+  Price=Out1
+)
+Price_Out_List
+```
+Tal como se determinó en el análisis 'Boxplot', existen muchos outliers dentro del atributo 'Price'. Esto se debe a la gran variedad de precios que hay en el mercado. De acuerdo a la función 'skim' empleada anteriormente, la media de los precios es alrededor de $10,730. Mientras tanto, en este análisis se observan valores que se diferencian mucho de la media.
+
+```{r}
+## Age Outliers
+Out2 = boxplot.stats(corolla.df$Age_08_04)$out
+Age_Out=which(corolla.df$Age_08_04%in%c(Out2))
+Id_Age=corolla.df$Id[(Age_Out)]
+Model_age_o=corolla.df$Model[(Age_Out)]
+Age_Out_List=data.frame(
+  ID=Id_Age,
+  Model=Model_age_o,
+  Age=Out2
+)
+Age_Out_List
+```
+Los valores atípicos para el atributo de 'edad' son pocos. Esto puede ocurrir debido a que la mayoría de los autos en la base de datos tienen un promedio de 55 meses de existencia. En la vida real, es raro ver carros nuevos en venta en un concesionario de autos.
+
+```{r}
+## CC Outliers
+Out2 = boxplot.stats(corolla.df$cc)$out
+cc_Out=which(corolla.df$cc%in%c(Out2))
+Id_cc=corolla.df$Id[(cc_Out)]
+Model_cc_o=corolla.df$Model[(cc_Out)]
+cc_Out_List=data.frame(
+  ID=Id_cc,
+  Model=Model_cc_o,
+  cc=Out2
+)
+cc_Out_List
+```
+Dentro de esta lista de outliers, se puede observar que el atributo 'cc' muestra outliers equivalentes a 2000. Estos datos son considerados outliers porque estan fuera del cuarto cuartil. 
+
+```{r}
+## KM Outliers
+Out3 = boxplot.stats(corolla.df$KM)$out
+KM_Out=which(corolla.df$KM%in%c(Out3))
+Id_KM=corolla.df$Id[(KM_Out)]
+Model_KM_o=corolla.df$Model[(KM_Out)]
+KM_Out_List=data.frame(
+  ID=Id_KM,
+  Model=Model_KM_o,
+  KM=Out3
+)
+KM_Out_List
+```
+Los valores atípicos para el atributo kilometraje, tal como se predijo en el análisis 'boxplot', son varios. Estos valores se ven alejados de la media que de acuerdo a la función 'skim' empleada anteriormente es de 68,533 km, y en esta lista se encuentran valores tan bajos como 15,000 km.
+
+```{r}
+## Weight Outliers
+Out4 = boxplot.stats(corolla.df$Weight)$out
+Weight_Out=which(corolla.df$Weight%in%c(Out4))
+Id_Weight=corolla.df$Id[(Weight_Out)]
+Model_Weight_o=corolla.df$Model[(Weight_Out)]
+Weight_Out_List=data.frame(
+  ID=Id_Weight,
+  Model=Model_Weight_o,
+  Weight=Out4
+)
+Weight_Out_List
+```
+Aunque la variable 'weight' no es muy relevante a la hora de determinar el precio de un auto, existe un promedio de 1,072 kg. Los valores presentes en esta lista son considerados valores atípicos ya que sobre pasan este valor y puede llegar a afectar a la hora de tomar una decisión de compra.
+
+## PASO 8: Elaboración de scatter plots
+Las scatter plots tienen la función de observar de manera gráfica la posible relación lineal entre las variables. En esta ocasión solamente implementamos las variables que, de acuerdo a la matriz de correlación, tienen una relación significativa con el precio.
+
+Aunque la variable 'Mfg_Year' muestra una relación significativa con el precio, no se tomó en cuenta ya que esta esta directamente relacionada con la variable 'Age_08_04', de tal forma que al incluirla en este gráfico, se podría mostrar sesgo en el modelo generado futuramente.
+
+```{r}
+pairs(corolla.df[,c(3,4,7,14)])
+```
+Visualmente se puede observar que hay una relación lineal entre 'Price' y 'Age_08_04'. Las variables son inversamente proporcionales de tal forma que entre más alto sea el valor de 'Age_08_04', menor será el valor de 'Price'.
+
+La relación entre 'KM' y 'Price' no es tan fuerte al visualizarse en el gráfico, sin embargo muestran una relación inversamente proporcional. De tal manera que un auto con menor kilometraje, tiene un precio más elevado.
+
+La relación entre 'Weight' y 'Price' es directamente proporcional, de ltal manera que los autos más pesados son más caros, sin embargo, visualmente la relación no es tan fuerte como la relación de 'Price' y 'Age_08_04'.
+
+## PASO 9: Configuración de datos faltantes o errores
+En este paso, aunque pertenece mayormente a la imputación de datos, decidimos implementar una búsqueda de datos faltantes en la base de datos. Excluimos los valores de 0 ya que hay atributos que tienen valores equivalentes a 0, específicamente aquellos relacionados con los atributos booleanos y de los cuales sí representan significado y no deben de ser reemplazados por NAs.
+
+```{r}
+# convert whitespaces, empty or zeros into NAs (IF ANY)
+corolla.df[corolla.df == " "] <- NA
+corolla.df[corolla.df == ""] <- NA
+# Check for changes
+sapply(corolla.df, function(x) sum(is.na(x)))
+```
+Nuevamente, se observa que en este subset no hay datos faltantes, por lo que no sería necesario realizar data imputation. 
+
+## PASO 10: Detección de datos faltantes o errorers
+En este paso aplicamos el uso de 'mice' para ubicar datos faltantes (NA's) en caso de haberlos. 
+```{r}
+md.pattern(corolla.df)
+md.pattern(ds)
+```
+Como se puede observar, la base de datos en proceso de análisis esta completa y no tiene datos faltantes, por lo tanto,  no hay necesidad de implementar ningun método de data imputation.
+
+## PASO 11: Resumen estadístico de las variables
+Con uso de la función summary se pueden visualizar los datos estadísticos básicos para cada atributo. 
+
+```{r}
+summary(corolla.df)
+```
+
+# CONCLUSIÓN
+Para dar cierre a la exploración de los datos, se recapitulará brevemente lo aprendido del caso. De la base de datos inicialmente planteada, compuesta por 37 atributos y 1,436 instancias, se generó un subset únicamente contemplando los atributos numéricos. Dentro de este subset se realizó un análisis profundo en el que se determinaron las variables con una relación significativa al precio de reventa de los autos, así como un análisis de datos atípicos, e incluso de datos faltantes. De todo esto, se puede concluir que no habrá necesidad de realizar imputación de datos adicionales ya que no se observan ningún dato faltante. Sin embargo, habrá que emplear una estrategia de modelación para regresión logística, además de regresión lineal ya que muchas variables son lógicas y no se pudieron analizar a profundidad en este caso. 
+
+
+
